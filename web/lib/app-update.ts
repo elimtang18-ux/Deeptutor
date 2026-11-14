@@ -155,3 +155,57 @@ export async function fetchAppUpdateJob(
 export function updateJobIsActive(status: UpdateJobStatus): boolean {
   return ["pending", "handoff", "running", "restarting"].includes(status);
 }
+
+/* ------------------------------------------------------------------ */
+/*  Source-checkout updater (git pull + deps + restart)               */
+/* ------------------------------------------------------------------ */
+
+export type SourceUpdateJobStatus =
+  | "backup"
+  | "fetching"
+  | "merging"
+  | "installing"
+  | "restarting"
+  | "succeeded"
+  | "failed";
+
+export interface SourceUpdateJob {
+  id: string;
+  status: SourceUpdateJobStatus;
+  step: string;
+  error: string;
+  created_at: string;
+  started_at: string;
+  finished_at: string;
+  backup_dir: string;
+  pre_sha: string;
+  post_sha: string;
+  checkout_root: string;
+}
+
+export async function requestSourceUpdate(): Promise<SourceUpdateJob> {
+  const response = await apiFetch(apiUrl("/api/system/source-update"), {
+    method: "POST",
+  });
+  if (!response.ok) throw await responseError(response);
+  return (await response.json()) as SourceUpdateJob;
+}
+
+export async function fetchSourceUpdateJob(
+  signal?: AbortSignal,
+): Promise<SourceUpdateJob | null> {
+  const response = await apiFetch(apiUrl("/api/system/source-update/job"), {
+    cache: "no-store",
+    signal,
+  });
+  if (!response.ok) throw await responseError(response);
+  return (await response.json()) as SourceUpdateJob | null;
+}
+
+export function sourceUpdateJobIsActive(
+  status: SourceUpdateJobStatus,
+): boolean {
+  return ["backup", "fetching", "merging", "installing", "restarting"].includes(
+    status,
+  );
+}

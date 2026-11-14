@@ -17,6 +17,7 @@ from deeptutor.services.llm import LLMReasoningBudgetExhausted, finish_was_trunc
 from deeptutor.services.llm.types import CONTEXT_LENGTH_EXCEEDED_FINISH
 
 from . import loop_state as values
+from .pipeline import _SYNTHETIC_ASK_USER_CALL_PREFIX
 
 if TYPE_CHECKING:
     from .agent_loop import AgentLoop
@@ -425,7 +426,42 @@ class AgentLoopHost:
         )
         if not resumed:
             self.outcome = values.LoopOutcome(final_text="", completed=False)
-        return resumed
+            return False
+        if isinstance(resumed, str):
+            self._replay_synthetic_ask_user_reply(resumed)
+        return True
+
+    def _replay_synthetic_ask_user_reply(self, directive: str) -> None:
+        """Rewind a locally synthesized ask_user card before the next round.
+
+        The provider never issued this call, so its ``role=tool`` output
+        would be rejected on the next round ("No tool call found for tool
+        output with call_id ..."). Drop the synthetic tool message and the
+        assistant's matching ``tool_calls`` entry, and feed the user's answer
+        back as a plain user message instead.
+        """
+        call_id = self.dispatch.pause_tool_call_id
+        self.messages[:] = [
+            message
+            for message in self.messages
+            if not (
+                message.get("role") == "tool" and message.get("tool_call_id") == call_id
+            )
+        ]
+        for message in reversed(self.messages):
+            if message.get("role") != "assistant":
+                continue
+            remaining = [
+                call
+                for call in (message.get("tool_calls") or [])
+                if call.get("id") != call_id
+            ]
+            if remaining:
+                message["tool_calls"] = remaining
+            else:
+                message.pop("tool_calls", None)
+            break
+        self.messages.append({"role": "user", "content": directive})
 
     async def after_tools(self) -> dict[str, bool]:
         assert self.dispatch is not None

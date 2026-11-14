@@ -8,13 +8,13 @@
    heavy drop. */
 :root[data-ui-layout="modern"] {
   --dt-page-title-font: theme("fontFamily.sans");
-  --dt-ink: 55 53 47;
+  --dt-ink: 31 35 40;
   --dt-shadow-xs: 0 0 0 1px rgb(15 15 15 / 0.04), 0 1px 2px rgb(15 15 15 / 0.06);
-  --dt-shadow-sm: 0 0 0 1px rgb(15 15 15 / 0.05), 0 2px 4px rgb(15 15 15 / 0.06), 0 6px 16px -6px rgb(15 15 15 / 0.1);
-  --dt-shadow-md: 0 0 0 1px rgb(15 15 15 / 0.05), 0 3px 6px rgb(15 15 15 / 0.08), 0 9px 24px rgb(15 15 15 / 0.14);
+  --dt-shadow-sm: 0 0 0 1px rgb(15 15 15 / 0.06), 0 1px 2px rgb(15 15 15 / 0.05), 0 4px 8px -4px rgb(15 15 15 / 0.08);
+  --dt-shadow-md: 0 0 0 1px rgb(15 15 15 / 0.06), 0 2px 4px rgb(15 15 15 / 0.06), 0 6px 12px rgb(15 15 15 / 0.1);
   --dt-radius-sm: 6px;
   --dt-radius-md: 8px;
-  --dt-radius-lg: 12px;
+  --dt-radius-lg: 10px;
   --dt-ease: cubic-bezier(0.2, 0, 0, 1);
 }
 :root[data-ui-layout="modern"].dark,
@@ -25,20 +25,20 @@
   --dt-shadow-md: 0 0 0 1px rgb(255 255 255 / 0.08), 0 3px 6px rgb(0 0 0 / 0.3), 0 9px 24px rgb(0 0 0 / 0.45);
 }
 
-/* The default light theme turns warm: Notion-like warm grey canvas and ink.
-   The brand blue stays, kept for actions and links. */
+/* The default light theme: cool neutral grey canvas and ink (Trae/IDE-like),
+   white surfaces. The brand blue stays, kept for actions and links. */
 :root[data-ui-layout="modern"].theme-snow {
-  --foreground: #37352f;
-  --card-foreground: #37352f;
-  --popover-foreground: #37352f;
-  --secondary-foreground: #37352f;
-  --accent-foreground: #37352f;
-  --muted-foreground: #787774;
-  --secondary: #f8f8f7;
-  --muted: #f1f1ef;
-  --accent: rgb(55 53 47 / 0.06);
-  --border: rgb(55 53 47 / 0.09);
-  --input: rgb(55 53 47 / 0.16);
+  --foreground: #1f2328;
+  --card-foreground: #1f2328;
+  --popover-foreground: #1f2328;
+  --secondary-foreground: #1f2328;
+  --accent-foreground: #1f2328;
+  --muted-foreground: #57606a;
+  --secondary: #f6f8fa;
+  --muted: #eff2f5;
+  --accent: rgb(31 35 40 / 0.06);
+  --border: rgb(31 35 40 / 0.1);
+  --input: rgb(31 35 40 / 0.18);
   --shadow-raised: var(--dt-shadow-md);
 }
 
@@ -69,7 +69,7 @@
 .dt-product-sidebar {
   container-type: inline-size;
   border-right: 1px solid var(--border);
-  --dt-nav-row: 32px;
+  --dt-nav-row: 30px;
   --dt-nav-pad-x: 10px;
   --dt-nav-gap: 8px;
   --dt-nav-radius: 7px;
@@ -294,16 +294,17 @@ button.dt-record-toggle:focus-visible { outline: 2px solid var(--ring); outline-
 .dt-menu-footer { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 0 8px; font-size: 11.5px; color: var(--muted-foreground); }
 @keyframes dt-pop-in { from { opacity: 0; transform: scale(.97) translateY(-2px); } to { opacity: 1; transform: none; } }
 
-/* ---- Sidebar footer: one generous new-conversation button ------------ */
+/* ---- Sidebar footer: one compact new-conversation button ------------ */
 .dt-sidebar-footer { flex-shrink: 0; padding: 8px 10px 12px; }
 .dt-new-conversation {
-  display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 40px;
-  border-radius: 999px; background: var(--background); color: var(--foreground);
-  font-size: 13.5px; font-weight: 500; box-shadow: var(--dt-shadow-sm);
+  display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 34px;
+  border-radius: 8px; background: var(--background); color: var(--foreground);
+  font-size: 13px; font-weight: 500;
+  box-shadow: inset 0 0 0 1px var(--border-strong);
   transition: box-shadow 160ms var(--dt-ease), transform 160ms var(--dt-ease), background-color 160ms;
 }
 .dt-new-conversation > svg { flex-shrink: 0; opacity: .75; }
-.dt-new-conversation:hover { box-shadow: var(--dt-shadow-md); }
+.dt-new-conversation:hover { background: var(--muted); }
 .dt-new-conversation:active { transform: scale(.985); }
 .dt-new-conversation:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
@@ -311,7 +312,7 @@ button.dt-record-toggle:focus-visible { outline: 2px solid var(--ring); outline-
 .dt-palette-backdrop { position: fixed; inset: 0; z-index: 900; display: flex; justify-content: center; align-items: flex-start; padding: 12vh 16px 16px; background: rgb(15 15 15 / 0.32); animation: dt-fade-in 120ms ease-out; }
 .dt-palette {
   display: flex; flex-direction: column; width: min(640px, 100%); max-height: min(560px, 76vh); overflow: hidden;
-  border-radius: 14px; background: var(--popover); color: var(--popover-foreground); box-shadow: var(--dt-shadow-md);
+  border-radius: 10px; background: var(--popover); color: var(--popover-foreground); box-shadow: var(--dt-shadow-md);
   animation: dt-pop-in 160ms var(--dt-ease);
 }
 .dt-palette-field { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
@@ -330,24 +331,23 @@ button.dt-record-toggle:focus-visible { outline: 2px solid var(--ring); outline-
 @media (prefers-reduced-motion: reduce) { .dt-palette, .dt-palette-backdrop, .dt-popover { animation: none; } }
 
 /* ---- Chat home ----------------------------------------------------------
-   The greeting stays as classic has it — the mark beside a serif line, as
-   Claude does — warm against the sans UI. The composer and the suggestions
-   join the modern surfaces. */
+   The greeting mark sits beside a compact sans headline; the composer and
+   the suggestions join the modern surfaces. */
 :root[data-ui-layout="modern"] .dt-composer-surface {
-  z-index: 1; border-radius: 20px; border-color: transparent;
-  box-shadow: 0 0 0 1px rgb(var(--dt-ink) / 0.1), 0 1px 2px rgb(15 15 15 / 0.04), 0 10px 28px -12px rgb(15 15 15 / 0.14);
+  z-index: 1; border-radius: 12px; border-color: transparent;
+  box-shadow: 0 0 0 1px rgb(var(--dt-ink) / 0.12), 0 1px 2px rgb(15 15 15 / 0.04);
   transition: box-shadow 200ms var(--dt-ease);
 }
 :root[data-ui-layout="modern"] .dt-composer-surface:focus-within {
-  box-shadow: 0 0 0 1px rgb(var(--dt-ink) / 0.18), 0 1px 2px rgb(15 15 15 / 0.05), 0 16px 38px -14px rgb(15 15 15 / 0.2);
+  box-shadow: 0 0 0 1px rgb(var(--dt-ink) / 0.24), 0 0 0 4px var(--ring), 0 1px 2px rgb(15 15 15 / 0.05);
 }
 :root[data-ui-layout="modern"] :has(> .dt-composer-tray) .dt-composer-surface {
   /* Over the tray the soft drop lay on it as a grey wash; a short seam is
      enough to lift the box off the layer under it. */
-  box-shadow: 0 0 0 1px rgb(var(--dt-ink) / 0.1), 0 1px 2px rgb(15 15 15 / 0.04), 0 3px 8px -4px rgb(15 15 15 / 0.08);
+  box-shadow: 0 0 0 1px rgb(var(--dt-ink) / 0.12), 0 1px 2px rgb(15 15 15 / 0.04), 0 3px 8px -4px rgb(15 15 15 / 0.08);
 }
 :root[data-ui-layout="modern"] :has(> .dt-composer-tray) .dt-composer-surface:focus-within {
-  box-shadow: 0 0 0 1px rgb(var(--dt-ink) / 0.18), 0 1px 2px rgb(15 15 15 / 0.05), 0 4px 10px -4px rgb(15 15 15 / 0.11);
+  box-shadow: 0 0 0 1px rgb(var(--dt-ink) / 0.24), 0 0 0 4px var(--ring), 0 1px 2px rgb(15 15 15 / 0.05);
 }
 :root[data-ui-layout="modern"] .dt-composer-surface textarea,
 :root[data-ui-layout="modern"] .dt-composer-surface .dt-composer-lead { font-size: 15.5px; line-height: 1.6; letter-spacing: -0.003em; }
@@ -584,8 +584,8 @@ button.dt-record-toggle:focus-visible { outline: 2px solid var(--ring); outline-
    the pairs read as five things, not one evenly spaced line. */
 .dt-starter-tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px; }
 .dt-starter-tab {
-  position: relative; isolation: isolate; display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 12px;
-  border-radius: 999px; font-size: 14px; color: var(--muted-foreground); transition: background-color 140ms, color 140ms;
+  position: relative; isolation: isolate; display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px;
+  border-radius: 999px; font-size: 13.5px; color: var(--muted-foreground); transition: background-color 140ms, color 140ms;
 }
 .dt-starter-tab > svg, .dt-starter-advice svg { flex: none; }
 .dt-starter-tab:hover { color: var(--foreground); background: color-mix(in srgb, var(--foreground) 4%, transparent); }
@@ -596,8 +596,8 @@ button.dt-record-toggle:focus-visible { outline: 2px solid var(--ring); outline-
 /* Drops out of the row it belongs to: quick to appear, soft to settle. */
 .dt-starter-card {
   position: absolute; top: calc(100% + 8px); left: 0; right: 0; margin: 0 auto; max-width: 600px;
-  padding: 6px; border-radius: 16px; background: var(--popover); color: var(--popover-foreground);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--border) 70%, transparent), 0 14px 36px -14px rgb(15 15 15 / 0.22), 0 2px 6px -2px rgb(15 15 15 / 0.06);
+  padding: 6px; border-radius: 10px; background: var(--popover); color: var(--popover-foreground);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--border) 70%, transparent), 0 8px 20px -8px rgb(15 15 15 / 0.16), 0 2px 6px -2px rgb(15 15 15 / 0.06);
   transform-origin: 50% 0; animation: dt-starter-drop 150ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .dt-starter-card-body { animation: dt-starter-swap 110ms ease-out; }
@@ -653,7 +653,7 @@ button.dt-record-toggle:focus-visible { outline: 2px solid var(--ring); outline-
    step out of view (the heading stays for screen readers) and its actions
    move up here. Detail pages keep their title, which is their content;
    their actions still come up. */
-.dt-page-bar { display: flex; align-items: center; gap: 2px; min-height: 52px; padding: 8px 16px 8px 12px; flex-shrink: 0; }
+.dt-page-bar { display: flex; align-items: center; gap: 2px; min-height: 44px; padding: 6px 14px 6px 12px; flex-shrink: 0; }
 @media (max-width: 767px) { .dt-page-bar { display: none; } }
 .dt-crumb {
   display: inline-flex; align-items: center; gap: 7px; height: 30px; max-width: 100%; padding: 0 9px;
@@ -729,6 +729,21 @@ button.dt-record-toggle:focus-visible { outline: 2px solid var(--ring); outline-
 .dt-page-bar .dt-page-bar-actions :is(a, button, summary):disabled { opacity: .45; background: transparent; }
 /* The row's own wrappers add no spacing of their own. */
 .dt-page-bar-actions > div { gap: 2px; }
+/* The bar's right end: the page's own actions, then the app-level update
+   control, always flush against the bar's far edge. */
+.dt-page-bar-end { display: flex; min-width: 0; align-items: center; gap: 2px; margin-left: auto; }
+.dt-page-bar-end .dt-page-bar-actions { margin-left: 0; }
+.dt-page-bar-end .dt-update-button { display: flex; align-items: center; margin-left: 2px; padding-left: 2px; border-left: 1px solid var(--border); }
+.dt-page-bar .dt-page-bar-end .dt-update-button > button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 30px; min-height: 30px; padding: 0 9px;
+  border: 0; border-radius: var(--dt-radius-sm); box-shadow: none; outline-offset: -2px;
+  background: transparent; color: var(--muted-foreground);
+  font-size: 13px; font-weight: 450; line-height: 1; white-space: nowrap;
+  transition: background-color 120ms, color 120ms;
+}
+.dt-page-bar .dt-page-bar-end .dt-update-button > button:is(:hover, [aria-expanded="true"]) { background: var(--accent); color: var(--foreground); }
+.dt-page-bar .dt-page-bar-end .dt-update-button > button > svg { width: 15px; height: 15px; flex-shrink: 0; }
 .dt-menu-item[aria-current="page"] { background: color-mix(in srgb, var(--primary) 9%, transparent); }
 main:has(.dt-page-bar[data-exact]) [data-page-header][data-level="1"] > :first-child {
   position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
@@ -758,7 +773,7 @@ main:has(.dt-page-bar[data-exact]) [data-page-header][data-level="1"]:not(:has(>
    its title is just text, and rows separate by space and a hover wash. */
 .dt-panel {
   display: flex; flex-direction: column; min-height: 0; overflow: hidden;
-  border-radius: 18px; background: rgb(var(--dt-ink, 55 53 47) / 0.028);
+  border-radius: 12px; background: rgb(var(--dt-ink, 55 53 47) / 0.028);
 }
 .dt-panel-head {
   display: flex; flex-shrink: 0; align-items: center; gap: 8px; min-height: 44px; padding: 12px 16px 4px;
@@ -783,7 +798,7 @@ a.dt-panel-row:hover, button.dt-panel-row:hover, .dt-panel-row[aria-pressed="tru
 .dt-quiet-button.is-icon { width: 32px; padding: 0; }
 /* What to do next on a goal: a tinted strip, not a band between rules. */
 .dt-next-up {
-  display: flex; flex-direction: column; gap: 12px; padding: 14px 16px 14px 20px; border-radius: 18px;
+  display: flex; flex-direction: column; gap: 12px; padding: 14px 16px 14px 20px; border-radius: 12px;
   background: color-mix(in srgb, var(--primary) 6%, var(--background));
 }
 @media (min-width: 640px) { .dt-next-up { flex-direction: row; align-items: center; justify-content: space-between; gap: 24px; } }
@@ -819,7 +834,7 @@ a.dt-panel-row:hover, button.dt-panel-row:hover, .dt-panel-row[aria-pressed="tru
 }
 @media (min-width: 1280px) {
   :root[data-ui-layout="modern"] .dt-reading-desk .dt-reading-companion {
-    margin: 10px 10px 10px 0; overflow: hidden; border-radius: 16px;
+    margin: 10px 10px 10px 0; overflow: hidden; border-radius: 12px;
     background: var(--background); box-shadow: var(--dt-shadow-sm);
   }
 }
@@ -829,10 +844,10 @@ a.dt-panel-row:hover, button.dt-panel-row:hover, .dt-panel-row[aria-pressed="tru
 
 /* A card in a list that is being edited (a book's chapters before it is
    written): a soft field like the panels, a touch deeper on hover. */
-.dt-soft-card { padding: 14px 16px 16px 10px; border-radius: 16px; background: rgb(var(--dt-ink, 55 53 47) / 0.03); transition: background-color 140ms; }
+.dt-soft-card { padding: 14px 16px 16px 10px; border-radius: 12px; background: rgb(var(--dt-ink, 55 53 47) / 0.03); transition: background-color 140ms; }
 .dt-soft-card:hover, .dt-soft-card:focus-within { background: rgb(var(--dt-ink, 55 53 47) / 0.045); }
 /* The decision at the end of a long page: one lifted bar, not a ruled strip. */
-.dt-floating-bar { padding: 10px 12px 10px 16px; border-radius: 16px; background: var(--background); box-shadow: var(--dt-shadow-sm); }
+.dt-floating-bar { padding: 10px 12px 10px 16px; border-radius: 12px; background: var(--background); box-shadow: var(--dt-shadow-sm); }
 /* What every option in a section does, said once beside its title. */
 .dt-tray-section { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .dt-tray-section-hint { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; color: rgb(var(--dt-ink, 55 53 47) / 0.4); }

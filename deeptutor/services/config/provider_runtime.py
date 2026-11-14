@@ -551,6 +551,15 @@ STT_PROVIDERS: dict[str, VoiceProviderSpec] = {
         default_model="",
         is_local=True,
     ),
+    # In-process MLX Whisper: ``base_url`` is the local model directory
+    # (config.json + weights.safetensors), not an HTTP endpoint.
+    "mlx_whisper": VoiceProviderSpec(
+        label="MLX Whisper (Local)",
+        default_api_base="",
+        adapter="mlx_whisper",
+        default_model="whisper-large-v3-turbo",
+        is_local=True,
+    ),
     "custom": VoiceProviderSpec(
         label="OpenAI Compatible",
         default_api_base="",

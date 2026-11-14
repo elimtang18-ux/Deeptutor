@@ -9,6 +9,7 @@ Package: https://github.com/rany2/edge-tts
 from __future__ import annotations
 
 import math
+import os
 
 from deeptutor.services.voice.base import BaseTTSAdapter, VoiceProviderError
 from deeptutor.services.voice.config import TTSConfig
@@ -25,6 +26,15 @@ def edge_rate(speed: float | None) -> str:
     return f"{round((speed - 1) * 100):+d}%"
 
 
+def _proxy_from_env() -> str | None:
+    """Proxy for networks that cannot reach Edge's endpoint directly."""
+    for name in ("EDGE_TTS_PROXY", "HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"):
+        value = (os.environ.get(name) or "").strip()
+        if value:
+            return value
+    return None
+
+
 class EdgeTTSAdapter(BaseTTSAdapter):
     """Stream mp3 audio from Edge's read-aloud service."""
 
@@ -38,7 +48,12 @@ class EdgeTTSAdapter(BaseTTSAdapter):
         if (config.response_format or "mp3") != "mp3":
             raise VoiceProviderError("Edge TTS only produces mp3 audio.")
         communicate = edge_tts.Communicate(
-            text, config.voice or EDGE_DEFAULT_VOICE, rate=edge_rate(config.speed)
+            text,
+            config.voice or EDGE_DEFAULT_VOICE,
+            rate=edge_rate(config.speed),
+            proxy=_proxy_from_env(),
+            connect_timeout=min(10, config.request_timeout),
+            receive_timeout=config.request_timeout,
         )
         audio = bytearray()
         try:

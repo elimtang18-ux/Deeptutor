@@ -766,6 +766,7 @@ def _provider_choices() -> dict[str, list[dict[str, Any]]]:
                 "base_url": spec.default_api_base,
                 "default_model": spec.default_model,
                 "default_voice": spec.default_voice,
+                "requires_api_key": name != "edge_tts",
                 "voice_options": voice_options(name, "tts"),
             }
             for name, spec in TTS_PROVIDERS.items()

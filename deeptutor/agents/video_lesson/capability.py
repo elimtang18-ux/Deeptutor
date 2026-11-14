@@ -46,18 +46,24 @@ class VideoLessonCapability(TurnCapability):
         base_dir = paths.get_agent_dir("video_lesson") / turn_id
         history = str(context.metadata.get("conversation_context_text", "") or "")
 
+        # The lesson's language follows the question: a Chinese question gets a
+        # Chinese lesson (script, narration, captions), an English one English.
+        from deeptutor.services.prompt.language import detect_text_language
+
+        lesson_language = detect_text_language(context.user_message, context.language)
+
         writer = LessonWriterAgent(
             api_key=llm_config.api_key,
             base_url=llm_config.base_url,
             api_version=llm_config.api_version,
-            language=context.language,
+            language=lesson_language,
         )
         writer.set_trace_callback(self._build_trace_bridge(stream, i18n))
         writer.start(user_input=context.user_message, history=history)
         # Fixes edit a lesson that already exists; the fast task model does them in a
         # fraction of the main model's time. Without one, the main writer fixes too.
         fixer = (
-            task_model_agent(lambda **kw: LessonWriterAgent(language=context.language, **kw))
+            task_model_agent(lambda **kw: LessonWriterAgent(language=lesson_language, **kw))
             or writer
         )
         if fixer is not writer:
@@ -112,7 +118,7 @@ class VideoLessonCapability(TurnCapability):
                             stage="render_check",
                         )
                     clips, _ = await asyncio.gather(
-                        narrate(draft.narration, context.language, voice_cache), runtime_ready
+                        narrate(draft.narration, lesson_language, voice_cache), runtime_ready
                     )
                     narrated = any(clip.audio for clip in clips.values())
                     await stream.progress(
@@ -143,7 +149,7 @@ class VideoLessonCapability(TurnCapability):
                     )
                     started = time.perf_counter()
                     issues = await asyncio.to_thread(
-                        self._layout_issues, base_dir, build, context.language
+                        self._layout_issues, base_dir, build, lesson_language
                     )
                     timings["render_check"] += round(time.perf_counter() - started, 3)
                     if issues is None:
@@ -201,7 +207,7 @@ class VideoLessonCapability(TurnCapability):
                 base_dir / "source" / "player.js",
                 base_dir / "artifacts" / "lesson.html",
                 title=title,
-                language=context.language,
+                language=lesson_language,
             )
             (base_dir / "source" / "player.js").unlink(missing_ok=True)
             fps, frames = 30, max((f.get("frame", 0) for f in build.frames), default=0) + 1

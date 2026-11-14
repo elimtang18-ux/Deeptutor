@@ -545,17 +545,34 @@ def is_response_format_disabled_at_runtime(binding: str | None, model: str | Non
 
 # Runtime cache for providers that refuse to be told *which* tool to call.
 # Keyed by (binding_lower, model_lower), populated when a request naming a
-# function is rejected (DeepSeek V4 with thinking: "Thinking mode does not
-# support this tool_choice"). Recorded so the next forced round asks for
-# ``"required"`` up front instead of paying for a failed request first.
-_RUNTIME_DISABLED_FORCED_TOOL_CHOICE: set[tuple[str, str]] = set()
+# function is rejected, and holding the choice to fall back to. Most providers
+# accept ``"required"`` once naming is dropped; DeepSeek V4 in thinking mode
+# rejects every explicit choice ("Thinking mode does not support this
+# tool_choice"), so those pairs must fall back to ``"auto"``. Recorded so the
+# next forced round sends the usable choice up front instead of paying for a
+# failed request first.
+_RUNTIME_DISABLED_FORCED_TOOL_CHOICE: dict[tuple[str, str], str] = {}
 
 
-def disable_forced_tool_choice_at_runtime(binding: str | None, model: str | None) -> None:
+def disable_forced_tool_choice_at_runtime(
+    binding: str | None,
+    model: str | None,
+    fallback: str = "required",
+) -> None:
     """Mark a (binding, model) pair as unable to have one tool forced."""
     if not binding or not model:
         return
-    _RUNTIME_DISABLED_FORCED_TOOL_CHOICE.add((binding.lower(), model.lower()))
+    _RUNTIME_DISABLED_FORCED_TOOL_CHOICE[(binding.lower(), model.lower())] = fallback
+
+
+def forced_tool_choice_fallback_at_runtime(
+    binding: str | None,
+    model: str | None,
+) -> str | None:
+    """The choice recorded by :func:`disable_forced_tool_choice_at_runtime`, if any."""
+    if not binding or not model:
+        return None
+    return _RUNTIME_DISABLED_FORCED_TOOL_CHOICE.get((binding.lower(), model.lower()))
 
 
 def is_forced_tool_choice_disabled_at_runtime(
@@ -563,9 +580,7 @@ def is_forced_tool_choice_disabled_at_runtime(
     model: str | None,
 ) -> bool:
     """Whether this pair was recorded by :func:`disable_forced_tool_choice_at_runtime`."""
-    if not binding or not model:
-        return False
-    return (binding.lower(), model.lower()) in _RUNTIME_DISABLED_FORCED_TOOL_CHOICE
+    return forced_tool_choice_fallback_at_runtime(binding, model) is not None
 
 
 def supports_response_format(binding: str, model: str | None = None) -> bool:
@@ -767,5 +782,6 @@ __all__ = [
     "disable_response_format_at_runtime",
     "is_response_format_disabled_at_runtime",
     "disable_forced_tool_choice_at_runtime",
+    "forced_tool_choice_fallback_at_runtime",
     "is_forced_tool_choice_disabled_at_runtime",
 ]

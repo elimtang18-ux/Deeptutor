@@ -39,6 +39,83 @@ def preset(model: str, *, languages=None, formats=None, **kwargs) -> dict:
 
 
 def _tts_models(provider: str) -> tuple[list[dict], str]:
+    if provider == "edge_tts":
+        # Edge TTS has no per-account voice discovery, so the curated list below
+        # is the only way to offer selectable names. Users can still type any
+        # voice id supported by the service.
+        return [
+            preset(
+                "edge-tts",
+                languages=choices(
+                    [
+                        "en-US",
+                        "en-GB",
+                        "en-AU",
+                        "en-IN",
+                        "zh-CN",
+                        "zh-TW",
+                        "ja-JP",
+                        "ko-KR",
+                        "es-ES",
+                        "fr-FR",
+                        "de-DE",
+                    ]
+                ),
+                formats=["mp3"],
+                speed={"min": 0.5, "max": 2, "step": 0.05},
+                voices=[
+                    {"id": voice, "label": label}
+                    for voice, label in [
+                        ("en-US-AvaNeural", "Ava · Female (en-US)"),
+                        ("en-US-AriaNeural", "Aria · Female (en-US)"),
+                        ("en-US-EmmaNeural", "Emma · Female (en-US)"),
+                        ("en-US-JennyNeural", "Jenny · Female (en-US)"),
+                        ("en-US-MichelleNeural", "Michelle · Female (en-US)"),
+                        ("en-US-AnaNeural", "Ana · Child (en-US)"),
+                        ("en-US-AndrewNeural", "Andrew · Male (en-US)"),
+                        ("en-US-BrianNeural", "Brian · Male (en-US)"),
+                        ("en-US-ChristopherNeural", "Christopher · Male (en-US)"),
+                        ("en-US-EricNeural", "Eric · Male (en-US)"),
+                        ("en-US-GuyNeural", "Guy · Male (en-US)"),
+                        ("en-US-RogerNeural", "Roger · Male (en-US)"),
+                        ("en-US-SteffanNeural", "Steffan · Male (en-US)"),
+                        ("en-GB-SoniaNeural", "Sonia · Female (en-GB)"),
+                        ("en-GB-LibbyNeural", "Libby · Female (en-GB)"),
+                        ("en-GB-MaisieNeural", "Maisie · Child (en-GB)"),
+                        ("en-GB-RyanNeural", "Ryan · Male (en-GB)"),
+                        ("en-GB-ThomasNeural", "Thomas · Male (en-GB)"),
+                        ("en-AU-NatashaNeural", "Natasha · Female (en-AU)"),
+                        ("en-AU-WilliamNeural", "William · Male (en-AU)"),
+                        ("en-IN-NeerjaNeural", "Neerja · Female (en-IN)"),
+                        ("en-IN-PrabhatNeural", "Prabhat · Male (en-IN)"),
+                        ("zh-CN-XiaoxiaoNeural", "Xiaoxiao · Female (zh-CN)"),
+                        ("zh-CN-XiaoyiNeural", "Xiaoyi · Female (zh-CN)"),
+                        ("zh-CN-XiaoshuangNeural", "Xiaoshuang · Child (zh-CN)"),
+                        ("zh-CN-YunxiNeural", "Yunxi · Male (zh-CN)"),
+                        ("zh-CN-YunjianNeural", "Yunjian · Male (zh-CN)"),
+                        ("zh-CN-YunyangNeural", "Yunyang · Male (zh-CN)"),
+                        ("zh-TW-HsiaoChenNeural", "HsiaoChen · Female (zh-TW)"),
+                        ("zh-TW-HsiaoYuNeural", "HsiaoYu · Female (zh-TW)"),
+                        ("zh-TW-YunJheNeural", "YunJhe · Male (zh-TW)"),
+                        ("ja-JP-NanamiNeural", "Nanami · Female (ja-JP)"),
+                        ("ja-JP-KeitaNeural", "Keita · Male (ja-JP)"),
+                        ("ko-KR-SunHiNeural", "SunHi · Female (ko-KR)"),
+                        ("ko-KR-InJoonNeural", "InJoon · Male (ko-KR)"),
+                        ("es-ES-ElviraNeural", "Elvira · Female (es-ES)"),
+                        ("es-ES-AlvaroNeural", "Alvaro · Male (es-ES)"),
+                        ("fr-FR-DeniseNeural", "Denise · Female (fr-FR)"),
+                        ("fr-FR-HenriNeural", "Henri · Male (fr-FR)"),
+                        ("de-DE-KatjaNeural", "Katja · Female (de-DE)"),
+                        ("de-DE-ConradNeural", "Conrad · Male (de-DE)"),
+                    ]
+                ],
+                configuration_note=(
+                    "Free Microsoft Edge speech; no API key required. "
+                    "Audio is returned as MP3."
+                ),
+                docs_url="https://github.com/rany2/edge-tts",
+            )
+        ], "https://github.com/rany2/edge-tts"
     if provider == "xiaomi_mimo":
         return [
             preset(
@@ -223,6 +300,8 @@ def voice_options(provider: str, service: str) -> dict:
         )
         if provider == "minimax":
             fallback = {**deepcopy(models[0]), "id": "", "voices": []}
+        elif provider == "edge_tts":
+            fallback = {**deepcopy(models[0]), "id": "", "voices": []}
         elif provider == "volcengine_speech":
             fallback = {**deepcopy(models[0]), "id": "", "voices": [], "instructions": False}
         elif provider == "dashscope":
@@ -255,6 +334,7 @@ def voice_options(provider: str, service: str) -> dict:
             "volcengine_speech": ["bigmodel"],
             "mistral": ["voxtral-mini-latest", "voxtral-small-latest"],
             "xai": ["grok-voice-transcribe-2.0"],
+            "mlx_whisper": ["whisper-large-v3-turbo"],
         }.get(provider, [])
         languages = VOLC_LANGUAGES if provider == "volcengine_speech" else ISO_LANGUAGES
         if provider == "siliconflow":

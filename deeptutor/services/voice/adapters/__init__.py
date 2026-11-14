@@ -17,6 +17,7 @@ from deeptutor.services.voice.adapters.gemini import GeminiTTSAdapter
 from deeptutor.services.voice.adapters.mimo import MiMoTTSAdapter
 from deeptutor.services.voice.adapters.minimax import MiniMaxTTSAdapter
 from deeptutor.services.voice.adapters.mistral import MistralSTTAdapter, MistralTTSAdapter
+from deeptutor.services.voice.adapters.mlx_whisper import MLXWhisperSTTAdapter
 from deeptutor.services.voice.adapters.openai_compat import (
     OpenAICompatSTTAdapter,
     OpenAICompatTTSAdapter,
@@ -45,6 +46,7 @@ STT_ADAPTERS: dict[str, BaseSTTAdapter] = {
     "dashscope": DashScopeSTTAdapter(),
     "mistral_stt": MistralSTTAdapter(),
     "xai_stt": XaiSTTAdapter(),
+    "mlx_whisper": MLXWhisperSTTAdapter(),
 }
 
 

@@ -149,6 +149,42 @@ test('streamed workspace items win over legacy artifacts and dedupe by URL', () 
   assert.equal(merged.length, 1)
 })
 
+test('capability sources events yield live workspace file cards', () => {
+  const event = {
+    type: 'sources' as const,
+    content: '',
+    metadata: {
+      sources: [
+        { type: 'rag', kb_name: 'water-cycle', source_id: 'S1', title: 'source.md' },
+        {
+          type: 'workspace_item',
+          workspace_id: 'ws_test',
+          workspace_item_id: 'wsi_audio',
+          relative_path: 'outputs/audio_overview/turn/overview.mp3',
+          filename: 'overview.mp3',
+          url: '/files/workspace-items/ws_test/wsi_audio',
+          mime_type: 'audio/mpeg',
+          size_bytes: 1234,
+          generated: true,
+          title: 'Overview',
+          caption: 'Audio overview',
+        },
+        { type: 'artifact', filename: 'legacy.md', url: '/files/outputs/legacy.md' },
+      ],
+    },
+  }
+  const extracted = extractStreamedArtifacts([event] as never)
+
+  assert.equal(extracted.length, 2)
+  const audio = extracted[0]!
+  assert.equal(audio.filename, 'overview.mp3')
+  assert.equal(audio.origin, 'workspace')
+  assert.equal(audio.caption, 'Audio overview')
+  const legacy = extracted[1]!
+  assert.equal(legacy.origin, undefined)
+  assert.equal(legacy.url, '/files/outputs/legacy.md')
+})
+
 test('persisted workspace presentation metadata survives session hydration', () => {
   const hydrated = hydrateMessageAttachments([
     {

@@ -147,6 +147,34 @@ def _search_shell() -> dict[str, Any]:
     }
 
 
+def _default_tts_service() -> dict[str, Any]:
+    """Edge TTS needs no credentials, so a fresh catalog can speak immediately."""
+    return {
+        "active_profile_id": "tts-edge-tts-profile",
+        "active_model_id": "tts-edge-tts-model",
+        "profiles": [
+            {
+                "id": "tts-edge-tts-profile",
+                "name": "Microsoft Edge TTS",
+                "binding": "edge",
+                "api_key": "",
+                "base_url": "",
+                "api_version": "",
+                "extra_headers": {},
+                "models": [
+                    {
+                        "id": "tts-edge-tts-model",
+                        "name": "Edge TTS · Ava (English)",
+                        "model": "edge-tts",
+                        "voice": "en-US-AvaNeural",
+                        "response_format": "mp3",
+                    }
+                ],
+            }
+        ],
+    }
+
+
 # Every service the catalog holds, in the order the settings UI lists them.
 SERVICE_NAMES: tuple[str, ...] = (
     "llm",
@@ -241,13 +269,15 @@ def _connection_base_url_for(service_name: str, connection_base: str) -> str:
 
 
 def _default_catalog() -> dict[str, Any]:
+    services = {
+        name: _search_shell() if name == "search" else _service_shell()
+        for name in SERVICE_NAMES
+    }
+    services["tts"] = _default_tts_service()
     return {
         "version": 1,
         "connections": [],
-        "services": {
-            name: _search_shell() if name == "search" else _service_shell()
-            for name in SERVICE_NAMES
-        },
+        "services": services,
     }
 
 

@@ -111,6 +111,14 @@ CONTEXT_WINDOW_GUARD_RATIO = 0.9
 IMAGE_TOKEN_GUARD_RESERVE = 4096
 _DispatchOutcome = DispatchOutcome
 
+# Call-id prefix for ask_user cards the loop synthesizes locally when the
+# provider returned no native tool call (see the fallback in agent_loop's
+# ``_call_llm``). On resume these must NOT round-trip as tool outputs:
+# stateful providers reject ``tool_call_id`` values they never issued
+# ("No tool call found for tool output with call_id ..."). The reply is
+# replayed as a user message instead of a tool result.
+_SYNTHETIC_ASK_USER_CALL_PREFIX = "ask-user-fallback-"
+
 
 def _read_int(cfg: Any, *, key: str, default: int) -> int:
     if isinstance(cfg, dict):
@@ -1325,7 +1333,17 @@ class AgenticLoopPipeline:
         context: UnifiedContext,
         stream: StreamBus,
         dispatch: DispatchOutcome,
-    ) -> bool:
+    ) -> bool | str | None:
+        """Block on the user's answer and fold it into the conversation.
+
+        Returns ``True`` when the answer was written into the matching
+        ``role=tool`` message and the loop should continue, ``None`` when the
+        turn must stop (no waiter, abandoned reply, or the loop was told to
+        end). For a locally synthesized ``ask_user`` card the provider never
+        issued, the directive is returned as a string instead: callers cannot
+        round-trip it as a tool output and must replay it as a plain user
+        message.
+        """
         ask_user = (dispatch.pause_payload or {}).get("ask_user") or {}
         await self._notify_pause_hooks(context, "on_user_pause", context, ask_user)
         waiter = context.runtime.wait_for_user_reply
@@ -1338,7 +1356,7 @@ class AgenticLoopPipeline:
                     "metadata": {"ask_user": ask_user},
                 },
             )
-            return False
+            return None
 
         # The turn is about to park in ``waiting_input`` until the reply queue
         # yields. Executor-side state is not visible to clients that only read
@@ -1358,7 +1376,7 @@ class AgenticLoopPipeline:
         )
         raw_reply = await waiter()
         if raw_reply is None:
-            return False
+            return None
         reply_text, answers = _normalise_user_reply(raw_reply)
         await self._notify_pause_hooks(
             context,
@@ -1389,7 +1407,7 @@ class AgenticLoopPipeline:
         # outer capability owns the final message, so skip further LLM rounds.
         # Everything below only exists to feed the answer back to the model.
         if context.interaction.end_loop or context.metadata.get(END_LOOP):
-            return False
+            return None
 
         workspace_export_message = await self._resolve_workspace_export(
             context=context,
@@ -1418,6 +1436,10 @@ class AgenticLoopPipeline:
             if tm.get("tool_call_id") == dispatch.pause_tool_call_id:
                 tm["content"] = directive
                 break
+        if str(dispatch.pause_tool_call_id or "").startswith(
+            _SYNTHETIC_ASK_USER_CALL_PREFIX
+        ):
+            return directive
         return True
 
     @staticmethod

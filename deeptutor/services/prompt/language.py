@@ -7,6 +7,8 @@ utilities.
 
 from __future__ import annotations
 
+import re
+
 _LANGUAGE_LABELS: dict[str, str] = {
     "zh": "中文（简体）",
     "zh-cn": "中文（简体）",
@@ -33,6 +35,29 @@ _LANGUAGE_LABELS: dict[str, str] = {
 
 def normalize_language(language: str | None) -> str:
     return (language or "en").strip().lower() or "en"
+
+
+_HAN_RE = re.compile(r"[\u4e00-\u9fff]")
+_LATIN_RE = re.compile(r"[A-Za-z]")
+
+
+def detect_text_language(text: str | None, default: str = "en") -> str:
+    """Best-effort language of a free-form user message.
+
+    Question-following generators (video lessons, audio overviews) call this so
+    their output language follows what the user typed instead of the UI
+    language: a Chinese question is answered in Chinese, an English one in
+    English. Only confident detections override ``default`` (the UI language):
+    two or more Han characters mean Chinese; Latin letters with no Han
+    characters mean English; anything else (formulas, emoji, empty) keeps
+    ``default``.
+    """
+    text = text or ""
+    if len(_HAN_RE.findall(text)) >= 2:
+        return "zh"
+    if _LATIN_RE.search(text):
+        return "en"
+    return normalize_language(default)
 
 
 def is_chinese(language: str | None) -> bool:
@@ -123,6 +148,7 @@ def append_language_directive(
 
 __all__ = [
     "append_language_directive",
+    "detect_text_language",
     "is_chinese",
     "language_directive",
     "language_label",

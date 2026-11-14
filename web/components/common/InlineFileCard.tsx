@@ -51,6 +51,46 @@ export function extractStreamedArtifacts(
 ): MessageAttachment[] {
   const out: MessageAttachment[] = [];
   for (const ev of events ?? []) {
+    if (ev.type === "sources") {
+      // Capabilities publish generated files as ``sources`` entries of type
+      // ``artifact``/``workspace_item`` (same shape the backend persists as
+      // attachments). Mirror that here so the cards render live instead of
+      // only after a reload.
+      const sources = (ev.metadata?.sources ?? []) as Array<
+        Record<string, unknown> | undefined
+      >;
+      for (const item of sources) {
+        if (
+          !item ||
+          (item.type !== "artifact" && item.type !== "workspace_item") ||
+          typeof item.url !== "string" ||
+          !item.url
+        ) {
+          continue;
+        }
+        const entry: MessageAttachment = {
+          type: typeof item.mime_type === "string" && item.mime_type.startsWith("image/")
+            ? "image"
+            : "document",
+          filename: typeof item.filename === "string" ? item.filename : undefined,
+          url: item.url,
+          mime_type: typeof item.mime_type === "string" ? item.mime_type : undefined,
+          size_bytes: typeof item.size_bytes === "number" ? item.size_bytes : undefined,
+          generated: item.generated !== false,
+        };
+        if (typeof item.workspace_item_id === "string" && item.workspace_item_id) {
+          entry.origin = "workspace";
+          entry.workspace_id = typeof item.workspace_id === "string" ? item.workspace_id : undefined;
+          entry.workspace_item_id = item.workspace_item_id;
+          entry.relative_path = typeof item.relative_path === "string" ? item.relative_path : undefined;
+          entry.sha256 = typeof item.sha256 === "string" ? item.sha256 : undefined;
+          entry.title = typeof item.title === "string" ? item.title : undefined;
+          entry.caption = typeof item.caption === "string" ? item.caption : undefined;
+        }
+        out.push(entry);
+      }
+      continue;
+    }
     if (ev.type !== "tool_result") continue;
     const meta = (ev.metadata ?? {}) as {
       tool_metadata?: {

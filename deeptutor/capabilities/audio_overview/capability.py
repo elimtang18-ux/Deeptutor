@@ -108,6 +108,16 @@ class AudioOverviewCapability(TurnCapability):
 
         artifacts: Any
         async with stream.stage("voice_generation", source=self.name):
+            await stream.progress(
+                i18n.t(
+                    "synthesizing_segments",
+                    f"Synthesizing {len(script.segments)} dialogue segments...",
+                    count=len(script.segments),
+                ),
+                source=self.name,
+                stage="voice_generation",
+                metadata={"trace_kind": "progress"},
+            )
             artifacts = await pipeline.publish(
                 turn_id=turn_id,
                 script=script,
@@ -116,6 +126,14 @@ class AudioOverviewCapability(TurnCapability):
             )
 
         async with stream.stage("publishing", source=self.name):
+            # Stream the transcript as assistant content: it is the only way
+            # the answer reaches the chat bubble (and the persisted message),
+            # because this capability emits no text during generation.
+            await stream.content(
+                artifacts.transcript,
+                source=self.name,
+                stage="publishing",
+            )
             if artifacts.workspace_items:
                 await stream.sources(
                     [{"type": "workspace_item", **item} for item in artifacts.workspace_items],

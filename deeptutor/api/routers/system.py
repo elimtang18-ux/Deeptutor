@@ -40,6 +40,13 @@ from deeptutor.services.config import (
     resolve_search_runtime_config,
     supported_search_providers_hint,
 )
+from deeptutor.services.source_update import (
+    SourceUpdateInProgressError,
+    SourceUpdateJobStore,
+    checkout_root,
+    launch_source_update_worker,
+    source_update_store_root,
+)
 
 
 def get_embedding_client(*args, **kwargs):
@@ -313,6 +320,41 @@ async def request_managed_update(_request: ManagedUpdateRequest) -> dict[str, An
             detail="Finish the active conversation before updating DeepTutor.",
         )
     return _job_payload(job) or {}
+
+
+@router.get("/source-update/job")
+async def get_source_update_job() -> dict[str, Any] | None:
+    store = SourceUpdateJobStore(source_update_store_root())
+    job = store.load_or_none()
+    return job.to_dict() if job else None
+
+
+@router.post(
+    "/source-update",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(require_admin)],
+)
+async def request_source_update() -> dict[str, Any]:
+    """Pull the latest upstream code for a source checkout, then restart."""
+
+    root = checkout_root()
+    if root is None:
+        raise HTTPException(
+            status_code=409,
+            detail="This installation is not a Git source checkout.",
+        )
+    if not launcher_available():
+        raise HTTPException(
+            status_code=409,
+            detail="Updates require DeepTutor to be running under `deeptutor start`.",
+        )
+    store = SourceUpdateJobStore(source_update_store_root())
+    try:
+        job = store.create(checkout_root=root)
+    except SourceUpdateInProgressError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from None
+    launch_source_update_worker(store.root, checkout_root=root)
+    return job.to_dict()
 
 
 @router.get("/status")

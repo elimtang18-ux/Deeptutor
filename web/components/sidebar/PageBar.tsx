@@ -7,6 +7,7 @@ import { useDevice } from '@/hooks/useDevice'
 import { useCapabilityFilter } from '@/features/capabilities/useCapabilityCatalog'
 import { usePageSlotRef } from '@/components/layout/PageChrome'
 import { FeatureCrumb } from '@/components/layout/LocationCrumbs'
+import UpdateButton from '@/components/layout/UpdateButton'
 import { locatePage, pageSections } from './page-sections'
 
 function useShelves() {
@@ -62,7 +63,10 @@ export function PageBar() {
       <FeatureCrumb section={located.section} page={located.page} />
       <div ref={instanceRef} className="dt-page-bar-instance" />
       {exact && <div ref={metaRef} className="dt-page-bar-meta" />}
-      <div ref={actionsRef} className="dt-page-bar-actions" />
+      <div className="dt-page-bar-end">
+        <div ref={actionsRef} className="dt-page-bar-actions" />
+        <UpdateButton />
+      </div>
     </nav>
   )
 }

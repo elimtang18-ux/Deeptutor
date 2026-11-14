@@ -146,6 +146,20 @@ def is_forced_tool_choice_unsupported(exc: Exception) -> bool:
     )
 
 
+def is_thinking_mode_forced_tool_choice_unsupported(exc: Exception) -> bool:
+    """Whether the refusal is thinking mode rejecting *every* explicit choice.
+
+    DeepSeek V4 answers ``"Thinking mode does not support this tool_choice"``
+    for ``"required"`` as well as for a named function, so the generic
+    downgrade to ``"required"`` would fail the retry too. Such pairs must fall
+    back to ``"auto"`` — the loop still wraps a prose answer into a local card.
+    """
+    text = error_text(exc)
+    if "thinking" not in text:
+        return False
+    return is_forced_tool_choice_unsupported(exc)
+
+
 def is_tool_schema_unsupported(exc: Exception) -> bool:
     """Whether a provider rejected native tool/function-calling schemas.
 
@@ -270,5 +284,6 @@ __all__ = [
     "is_stream_options_unsupported",
     "is_transient_transport_error",
     "is_forced_tool_choice_unsupported",
+    "is_thinking_mode_forced_tool_choice_unsupported",
     "is_tool_schema_unsupported",
 ]

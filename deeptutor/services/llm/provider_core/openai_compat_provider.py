@@ -26,7 +26,7 @@ from deeptutor.services.keypool import KeyPool
 from deeptutor.services.llm.capabilities import (
     disable_forced_tool_choice_at_runtime,
     disable_response_format_at_runtime,
-    is_forced_tool_choice_disabled_at_runtime,
+    forced_tool_choice_fallback_at_runtime,
 )
 from deeptutor.services.llm.exceptions import LLMConfigError, LLMOperationPaused
 from deeptutor.services.llm.openai_http_client import openai_sdk_client_kwargs
@@ -50,6 +50,7 @@ from deeptutor.services.llm.reasoning_params import (
 from deeptutor.services.llm.request_compat import (
     is_forced_tool_choice_unsupported,
     is_response_format_unsupported,
+    is_thinking_mode_forced_tool_choice_unsupported,
 )
 from deeptutor.services.llm.usage_frame import usage_breakdown
 from deeptutor.services.provider_registry import model_overrides_for, normalize_wire_api
@@ -872,10 +873,11 @@ class OpenAICompatProvider(LLMProvider):
         """
         if not self._names_a_tool(tool_choice):
             return tool_choice
-        if is_forced_tool_choice_disabled_at_runtime(
+        fallback = forced_tool_choice_fallback_at_runtime(
             self._binding_name(), model or self.default_model
-        ):
-            return "required"
+        )
+        if fallback:
+            return fallback
         return tool_choice
 
     @staticmethod
@@ -889,22 +891,32 @@ class OpenAICompatProvider(LLMProvider):
         exc: Exception,
         tool_choice: str | dict[str, Any] | None,
         model: str | None,
-    ) -> bool:
-        """Record a refusal to force one tool; True when a retry is worth it."""
+    ) -> str | None:
+        """Record a refusal to force one tool; return the choice to retry with.
+
+        ``"required"`` is enough for providers that only object to *naming* the
+        tool. DeepSeek V4 in thinking mode refuses that too, so those pairs
+        retry with ``"auto"``: the tool surface stays, and the loop wraps a
+        prose answer into a local card when the model does not call one.
+        """
         if not self._names_a_tool(tool_choice):
-            return False
+            return None
         if not is_forced_tool_choice_unsupported(exc):
-            return False
+            return None
         target = model or self.default_model
+        fallback = (
+            "auto" if is_thinking_mode_forced_tool_choice_unsupported(exc) else "required"
+        )
         # loguru formats with ``{}``, not printf placeholders.
         logger.warning(
             "provider refused a forced tool_choice for model={}; retrying with "
-            "tool_choice=required. error={}",
+            "tool_choice={}. error={}",
             target,
+            fallback,
             str(exc)[:200],
         )
-        disable_forced_tool_choice_at_runtime(self._binding_name(), target)
-        return True
+        disable_forced_tool_choice_at_runtime(self._binding_name(), target, fallback)
+        return fallback
 
     def _supports_explicit_prompt_cache(self, model_name: str) -> bool:
         """Gate explicit breakpoints to native OpenAI GPT-5.6+.
@@ -1253,9 +1265,10 @@ class OpenAICompatProvider(LLMProvider):
                     )
                 raise
         except Exception as e:
-            if self._note_forced_tool_choice_rejected(e, tool_choice, model):
-                # ``"required"`` cannot be refused for the same reason, so this
-                # retries at most once.
+            fallback = self._note_forced_tool_choice_rejected(e, tool_choice, model)
+            if fallback:
+                # The refusal happens when the request is created, so a retry
+                # may carry a coarser choice without losing any response.
                 return await self.chat(
                     messages,
                     tools,
@@ -1263,7 +1276,7 @@ class OpenAICompatProvider(LLMProvider):
                     max_tokens,
                     temperature,
                     reasoning_effort,
-                    "required",
+                    fallback,
                     **extra_kwargs,
                 )
             if tools and self._is_tool_format_error(e):
@@ -1524,11 +1537,10 @@ class OpenAICompatProvider(LLMProvider):
                 finish_reason="error",
             )
         except Exception as e:
-            if self._note_forced_tool_choice_rejected(e, tool_choice, model):
+            fallback = self._note_forced_tool_choice_rejected(e, tool_choice, model)
+            if fallback:
                 # Safe to replay: the refusal happens when the request is
                 # created, so no part of a response has been streamed yet.
-                # ``"required"`` cannot be refused for the same reason, so
-                # this retries at most once.
                 return await self.chat_stream(
                     messages,
                     tools,
@@ -1536,7 +1548,7 @@ class OpenAICompatProvider(LLMProvider):
                     max_tokens,
                     temperature,
                     reasoning_effort,
-                    "required",
+                    fallback,
                     on_content_delta,
                     on_reasoning_delta,
                     on_tool_args_delta,
