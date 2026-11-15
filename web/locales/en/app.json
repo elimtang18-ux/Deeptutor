@@ -6681,5 +6681,6 @@
   "update.steps.restarting": "Restarting service",
   "update.steps.succeeded": "Update complete",
   "update.steps.failed": "Update failed",
-  "update.refresh": "Refresh"
+  "update.refresh": "Refresh",
+  "update.statusUnavailable": "Couldn't load installation info; the service may still be starting. Retrying…"
 }

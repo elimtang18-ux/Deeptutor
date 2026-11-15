@@ -23,7 +23,8 @@ export default function UpdateButton() {
   const [job, setJob] = useState<SourceUpdateJob | null>(null);
   const [error, setError] = useState("");
   const [version, setVersion] = useState("");
-  const [isSource, setIsSource] = useState(false);
+  const [isSource, setIsSource] = useState<boolean | null>(null);
+  const [statusError, setStatusError] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
   // Only reload automatically when the success was reached by this panel's
   // own run — not when reopening onto an old finished job.
@@ -53,11 +54,29 @@ export default function UpdateButton() {
     if (!open || !isAdmin) return;
     let cancelled = false;
     (async () => {
+      // The backend may be mid-restart right after an update, so retry a
+      // few times before giving up on the status surface.
+      let attempts = 0;
+      while (!cancelled && attempts < 4) {
+        try {
+          const status = await fetchAppUpdateStatus();
+          if (!cancelled) {
+            setVersion(status.current_version);
+            setIsSource(status.installation.mode === "source");
+          }
+          break;
+        } catch {
+          attempts += 1;
+          if (!cancelled && attempts < 4) {
+            await new Promise(resolve => setTimeout(resolve, 1500));
+          }
+        }
+      }
+      if (!cancelled && attempts >= 4) {
+        setStatusError(t("update.statusUnavailable"));
+      }
+      // Resume an existing job independently of the status surface.
       try {
-        const status = await fetchAppUpdateStatus();
-        if (cancelled) return;
-        setVersion(status.current_version);
-        setIsSource(status.installation.mode === "source");
         const existing = await fetchSourceUpdateJob();
         if (cancelled || !existing) return;
         if (sourceUpdateJobIsActive(existing.status)) {
@@ -73,7 +92,7 @@ export default function UpdateButton() {
           setPhase("done");
         }
       } catch {
-        // The panel still works; the status surface just stays empty.
+        // No stored job to resume; the confirm panel still works.
       }
     })();
     return () => {
@@ -153,24 +172,29 @@ export default function UpdateButton() {
                 {t("update.title")}
               </div>
               <p className="mb-3 text-[12.5px] leading-relaxed text-[var(--muted-foreground)]">
-                {isSource
-                  ? t("update.descriptionSource")
-                  : t("update.description")}
+                {isSource === false
+                  ? t("update.description")
+                  : t("update.descriptionSource")}
               </p>
               {version && (
                 <p className="mb-3 text-[12px] text-[var(--muted-foreground)]">
                   {t("update.currentVersion")}: {version}
                 </p>
               )}
-              {!isSource && (
+              {isSource === false && (
                 <p className="mb-3 text-[12px] text-amber-600 dark:text-amber-400">
                   {t("update.notSource")}
+                </p>
+              )}
+              {isSource === null && statusError && (
+                <p className="mb-3 text-[12px] text-[var(--muted-foreground)]">
+                  {statusError}
                 </p>
               )}
               <button
                 type="button"
                 onClick={start}
-                disabled={!isSource}
+                disabled={isSource === false}
                 className="inline-flex h-8 items-center gap-2 rounded-md bg-[var(--primary)] px-3 text-[12.5px] font-medium text-[var(--primary-foreground)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {t("update.confirm")}
