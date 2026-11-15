@@ -87,9 +87,11 @@ export default function UpdateButton() {
           setError(existing.error);
           setPhase("failed");
         } else if (existing.status === "succeeded") {
+          // A finished job must not lock the panel: keep the confirm
+          // view so another update can be triggered, and surface the
+          // last result as a footnote.
           setJob(existing);
-          fromRunningRef.current = false;
-          setPhase("done");
+          setPhase("confirm");
         }
       } catch {
         // No stored job to resume; the confirm panel still works.
@@ -179,6 +181,12 @@ export default function UpdateButton() {
               {version && (
                 <p className="mb-3 text-[12px] text-[var(--muted-foreground)]">
                   {t("update.currentVersion")}: {version}
+                </p>
+              )}
+              {job?.status === "succeeded" && (
+                <p className="mb-3 text-[12px] text-green-700 dark:text-green-400">
+                  {t("update.lastSucceeded")}
+                  {job.step || ""}
                 </p>
               )}
               {isSource === false && (
