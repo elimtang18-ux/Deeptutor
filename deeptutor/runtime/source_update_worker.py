@@ -24,8 +24,8 @@ from deeptutor.services.source_update import (
 )
 
 MERGE_FAILED_HINT = (
-    "本地提交与上游分叉，无法快进合并。请手动执行 git pull --rebase "
-    "或 git merge origin/main 处理冲突后再更新。本次未丢弃任何改动。"
+    "本地改动与上游代码存在冲突，无法自动合并。已中止本次更新并恢复到更新前状态，"
+    "未丢弃任何改动。请手动执行 git pull --rebase 解决冲突后再更新。"
 )
 
 _NO_RESTART_HINT = "已拉取最新代码并重装依赖，但无法确定 launcher 进程，请手动重启服务。"
@@ -167,12 +167,24 @@ def main() -> int:
 
         pre_sha = _run(["git", "rev-parse", "HEAD"], cwd=checkout).stdout.strip()
 
-        # 4. Fast-forward only: never discards local commits.
+        # 4. Fast-forward when possible. Local commits are a normal state for
+        # a customized checkout, so fall back to replaying them on top of
+        # upstream. A conflicting rebase is aborted — nothing is discarded.
         store.update(job_id, status="merging", step="合并最新代码")
         merged = _run(["git", "merge", "--ff-only", upstream.stdout.strip()], cwd=checkout)
         if merged.returncode != 0:
-            restore_stash()
-            return _fail(store, job_id, MERGE_FAILED_HINT + "\n" + _tail(merged.stderr))
+            rebased = _run(
+                ["git", "-c", "core.editor=true", "rebase", upstream.stdout.strip()],
+                cwd=checkout,
+            )
+            if rebased.returncode != 0:
+                _run(["git", "rebase", "--abort"], cwd=checkout)
+                restore_stash()
+                return _fail(
+                    store,
+                    job_id,
+                    MERGE_FAILED_HINT + "\n" + _tail(rebased.stderr or rebased.stdout),
+                )
 
         post_sha = _run(["git", "rev-parse", "HEAD"], cwd=checkout).stdout.strip()
         store.update(job_id, pre_sha=pre_sha, post_sha=post_sha)
