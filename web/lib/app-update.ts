@@ -209,3 +209,26 @@ export function sourceUpdateJobIsActive(
     status,
   );
 }
+
+export interface SourceUpdateCheck {
+  mode: "source" | "other";
+  available: boolean;
+  behind: number;
+  ahead: number;
+  local_sha: string;
+  remote_sha: string;
+  checked_at: string;
+  error: string;
+}
+
+export async function fetchSourceUpdateCheck(
+  options: { refresh?: boolean; signal?: AbortSignal } = {},
+): Promise<SourceUpdateCheck> {
+  const query = options.refresh ? "?refresh=true" : "";
+  const response = await apiFetch(
+    apiUrl(`/api/system/source-update/check${query}`),
+    { cache: "no-store", signal: options.signal },
+  );
+  if (!response.ok) throw await responseError(response);
+  return (await response.json()) as SourceUpdateCheck;
+}

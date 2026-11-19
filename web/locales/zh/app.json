@@ -6683,5 +6683,7 @@
   "update.steps.failed": "更新失败",
   "update.refresh": "刷新页面",
   "update.statusUnavailable": "暂时无法获取安装状态，服务可能正在启动，正在自动重试…",
-  "update.lastSucceeded": "上次更新成功："
+  "update.lastSucceeded": "上次更新成功：",
+  "update.available": "有新版本可更新",
+  "update.availableCount": "上游有 {{count}} 个新提交可更新"
 }

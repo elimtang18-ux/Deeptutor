@@ -25,6 +25,8 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import threading
+import time
 from typing import Any, Literal
 import uuid
 
@@ -229,11 +231,99 @@ def launch_source_update_worker(store_root: Path, *, checkout_root: Path) -> Non
         subprocess.Popen(command, stdout=log, **kwargs)  # nosec B603
 
 
+@dataclass
+class SourceUpdateCheck:
+    """Whether upstream has commits the checkout does not have yet."""
+
+    available: bool = False
+    behind: int = 0
+    ahead: int = 0
+    local_sha: str = ""
+    remote_sha: str = ""
+    checked_at: str = ""
+    error: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "available": self.available,
+            "behind": self.behind,
+            "ahead": self.ahead,
+            "local_sha": self.local_sha,
+            "remote_sha": self.remote_sha,
+            "checked_at": self.checked_at,
+            "error": self.error,
+        }
+
+
+_CHECK_TTL_SECONDS = 300.0
+_check_cache: dict[str, tuple[float, SourceUpdateCheck]] = {}
+_check_lock = threading.Lock()
+
+
+def _git(argv: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", *argv], cwd=str(cwd), capture_output=True, text=True, check=False
+    )
+
+
+def check_upstream_commits(root: Path, *, refresh: bool = False) -> SourceUpdateCheck:
+    """Compare HEAD with its upstream, caching the (network) fetch briefly."""
+    key = str(root)
+    started = time.monotonic()
+    with _check_lock:
+        cached = _check_cache.get(key)
+        if cached and not refresh and started - cached[0] < _CHECK_TTL_SECONDS:
+            return cached[1]
+
+    fetched = _git(["fetch", "origin", "--quiet"], root)
+    if fetched.returncode != 0:
+        check = SourceUpdateCheck(
+            checked_at=_now(),
+            error=(fetched.stderr or fetched.stdout or "git fetch failed").strip()[:500],
+        )
+    else:
+        upstream = _git(
+            ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], root
+        )
+        local = _git(["rev-parse", "HEAD"], root)
+        if upstream.returncode != 0:
+            check = SourceUpdateCheck(
+                checked_at=_now(),
+                local_sha=local.stdout.strip(),
+                error="No upstream branch configured for this checkout.",
+            )
+        else:
+            counts = _git(
+                ["rev-list", "--left-right", "--count", f"HEAD...{upstream.stdout.strip()}"],
+                root,
+            )
+            ahead = behind = 0
+            if counts.returncode == 0:
+                parts = counts.stdout.split()
+                if len(parts) == 2:
+                    ahead, behind = int(parts[0]), int(parts[1])
+            remote = _git(["rev-parse", upstream.stdout.strip()], root)
+            check = SourceUpdateCheck(
+                available=behind > 0,
+                behind=behind,
+                ahead=ahead,
+                local_sha=local.stdout.strip(),
+                remote_sha=remote.stdout.strip(),
+                checked_at=_now(),
+            )
+
+    with _check_lock:
+        _check_cache[key] = (started, check)
+    return check
+
+
 __all__ = [
+    "SourceUpdateCheck",
     "SourceUpdateInProgressError",
     "SourceUpdateJob",
     "SourceUpdateJobStore",
     "backup_root",
+    "check_upstream_commits",
     "checkout_root",
     "launch_source_update_worker",
     "launcher_available",

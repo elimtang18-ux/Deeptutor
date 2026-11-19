@@ -43,6 +43,7 @@ from deeptutor.services.config import (
 from deeptutor.services.source_update import (
     SourceUpdateInProgressError,
     SourceUpdateJobStore,
+    check_upstream_commits,
     checkout_root,
     launch_source_update_worker,
     source_update_store_root,
@@ -320,6 +321,17 @@ async def request_managed_update(_request: ManagedUpdateRequest) -> dict[str, An
             detail="Finish the active conversation before updating DeepTutor.",
         )
     return _job_payload(job) or {}
+
+
+@router.get("/source-update/check")
+async def check_source_update(refresh: bool = False) -> dict[str, Any]:
+    """Report whether upstream has commits this checkout does not have."""
+
+    root = checkout_root()
+    if root is None:
+        return {"mode": "other", "available": False}
+    check = await asyncio.to_thread(check_upstream_commits, root, refresh=refresh)
+    return {"mode": "source", **check.to_dict()}
 
 
 @router.get("/source-update/job")

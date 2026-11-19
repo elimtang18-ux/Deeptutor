@@ -6,6 +6,7 @@ import { CircleCheck, Download, Loader2, TriangleAlert } from "lucide-react";
 import { useAuthStatus } from "@/hooks/useAuthStatus";
 import {
   fetchAppUpdateStatus,
+  fetchSourceUpdateCheck,
   fetchSourceUpdateJob,
   requestSourceUpdate,
   sourceUpdateJobIsActive,
@@ -14,6 +15,8 @@ import {
 } from "@/lib/app-update";
 
 type Phase = "confirm" | "running" | "failed" | "done";
+
+const UPDATE_CHECK_INTERVAL_MS = 10 * 60 * 1000;
 
 export default function UpdateButton() {
   const { t } = useTranslation();
@@ -25,10 +28,41 @@ export default function UpdateButton() {
   const [version, setVersion] = useState("");
   const [isSource, setIsSource] = useState<boolean | null>(null);
   const [statusError, setStatusError] = useState("");
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [behindCount, setBehindCount] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
   // Only reload automatically when the success was reached by this panel's
   // own run — not when reopening onto an old finished job.
   const fromRunningRef = useRef(false);
+
+  // Poll upstream periodically so the button can flag pending updates
+  // without the user opening the panel.
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+    const check = async (refresh: boolean) => {
+      try {
+        const result = await fetchSourceUpdateCheck({ refresh });
+        if (!cancelled) {
+          setUpdateAvailable(result.available);
+          setBehindCount(result.behind);
+        }
+      } catch {
+        // Offline or backend restarting: keep the previous state.
+      }
+    };
+    void check(false);
+    const timer = setInterval(() => void check(true), UPDATE_CHECK_INTERVAL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void check(true);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [isAdmin]);
 
   // Close on outside click or Escape.
   useEffect(() => {
@@ -75,6 +109,15 @@ export default function UpdateButton() {
       if (!cancelled && attempts >= 4) {
         setStatusError(t("update.statusUnavailable"));
       }
+      try {
+        const pending = await fetchSourceUpdateCheck({ refresh: true });
+        if (!cancelled) {
+          setUpdateAvailable(pending.available);
+          setBehindCount(pending.behind);
+        }
+      } catch {
+        // Keep whatever the background poll last reported.
+      }
       // Resume an existing job independently of the status surface.
       try {
         const existing = await fetchSourceUpdateJob();
@@ -117,6 +160,8 @@ export default function UpdateButton() {
           setPhase("failed");
         } else if (latest.status === "succeeded") {
           fromRunningRef.current = true;
+          setUpdateAvailable(false);
+          setBehindCount(0);
           setPhase("done");
         }
       } catch {
@@ -154,15 +199,19 @@ export default function UpdateButton() {
     status ? t(`update.steps.${status}`) : "";
 
   return (
-    <div ref={rootRef} className="dt-update-button relative">
+    <div
+      ref={rootRef}
+      className={`dt-update-button relative${updateAvailable ? " dt-update-button--available" : ""}`}
+    >
       <button
         type="button"
         aria-expanded={open}
         onClick={() => setOpen(v => !v)}
-        title={t("update.button")}
+        title={updateAvailable ? t("update.available") : t("update.button")}
       >
         <Download aria-hidden />
         <span>{t("update.button")}</span>
+        {updateAvailable && <span className="dt-update-dot" aria-hidden />}
       </button>
 
       {open && (
@@ -181,6 +230,11 @@ export default function UpdateButton() {
               {version && (
                 <p className="mb-3 text-[12px] text-[var(--muted-foreground)]">
                   {t("update.currentVersion")}: {version}
+                </p>
+              )}
+              {updateAvailable && behindCount > 0 && (
+                <p className="mb-3 text-[12px] font-medium text-[var(--primary)]">
+                  {t("update.availableCount", { count: behindCount })}
                 </p>
               )}
               {job?.status === "succeeded" && (
