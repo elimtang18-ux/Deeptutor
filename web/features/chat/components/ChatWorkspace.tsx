@@ -1437,12 +1437,10 @@ export default function ChatWorkspace() {
     if (!knowledgeBasesLoaded || sessionIdParam || state.sessionId ||
         state.knowledgeBasesInitialized || state.workspaceId !== requestedWorkspaceId ||
         knowledgeBasesWorkspace !== requestedWorkspaceId) return;
-    const candidates = knowledgeBases.filter((kb) => kb.available !== false &&
-      kb.metadata?.type !== "subagent");
-    const selected = candidates.length === 1 && candidates[0].is_default &&
-      candidates[0].status === "ready" ? [knowledgeBaseRef(candidates[0])] : [];
-    initializeKBs(state.sessionKey, state.workspaceId, selected);
-  }, [knowledgeBases, knowledgeBasesLoaded, knowledgeBasesWorkspace, requestedWorkspaceId,
+    // Knowledge bases are opt-in per conversation: a lone default KB used to be
+    // attached automatically, which put an unexpected chip in every new chat.
+    initializeKBs(state.sessionKey, state.workspaceId, []);
+  }, [knowledgeBasesLoaded, knowledgeBasesWorkspace, requestedWorkspaceId,
     sessionIdParam, state.sessionId, state.sessionKey, state.workspaceId,
     state.knowledgeBasesInitialized, initializeKBs]);
 
